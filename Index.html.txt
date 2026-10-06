@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NEET PG Deck">
+  <title>NEET PG Visual Anki</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      padding: 16px;
+      padding-top: env(safe-area-inset-top, 20px);
+      padding-bottom: env(safe-area-inset-bottom, 20px);
+      background: #090d16;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .app-wrap { width: 100%; max-width: 520px; display: flex; flex-direction: column; }
+    
+    /* Header & Navigation */
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    h1 { font-size: 19px; font-weight: 700; color: #38bdf8; margin: 0; }
+    .badge-count { font-size: 12px; background: #1e293b; color: #94a3b8; padding: 4px 8px; border-radius: 12px; }
+
+    .nav-tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 14px; }
+    .tab-btn {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      padding: 10px 4px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .tab-btn.active { background: #0284c7; color: #fff; border-color: #0284c7; }
+
+    .card-panel { display: none; background: #131d2e; border: 1px solid #23354d; border-radius: 14px; padding: 16px; }
+    .card-panel.active { display: block; }
+
+    label { display: block; font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-top: 10px; margin-bottom: 4px; }
+    input[type="text"], textarea {
+      width: 100%; background: #090d16; border: 1px solid #283a52; color: #fff; border-radius: 8px; padding: 10px; font-size: 14px;
+    }
+    textarea { resize: vertical; min-height: 70px; }
+
+    /* Canvas / Image Occlusion Editor */
+    .canvas-wrap {
+      position: relative;
+      margin-top: 8px;
+      background: #000;
+      border: 1px dashed #38bdf8;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      touch-action: none;
+    }
+    canvas { display: block; max-width: 100%; height: auto; touch-action: none; }
+
+    .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+    .action-btn {
+      flex: 1; padding: 11px; border-radius: 8px; border: none; font-weight: 700; font-size: 13px; cursor: pointer;
+    }
+    .btn-save { background: #10b981; color: #fff; }
+    .btn-clear { background: #475569; color: #fff; }
+
+    /* Study View */
+    .study-box {
+      background: #131d2e;
+      border: 1px solid #23354d;
+      border-radius: 14px;
+      padding: 16px;
+      min-height: 420px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .study-tag { font-size: 11px; background: #1e293b; color: #38bdf8; padding: 3px 8px; border-radius: 10px; display: inline-block; margin-bottom: 8px; }
+    .study-question { font-size: 15px; font-weight: 600; line-height: 1.4; margin: 4px 0 10px 0; }
+    
+    .occlusion-container { position: relative; display: inline-block; margin: 8px auto; max-width: 100%; }
+    .occlusion-img { display: block; max-width: 100%; max-height: 300px; border-radius: 8px; }
+    .occlusion-mask {
+      position: absolute;
+      background: #e11d48;
+      border: 2px solid #fda4af;
+      border-radius: 4px;
+      cursor: pointer;
+      opacity: 0.95;
+    }
+    .occlusion-mask.revealed { opacity: 0; pointer-events: none; }
+
+    .answer-box {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed #334155;
+      font-size: 14px;
+      color: #e2e8f0;
+      line-height: 1.4;
+      display: none;
+    }
+
+    .flip-btn { background: #38bdf8; color: #082f49; width: 100%; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 700; border: none; cursor: pointer; }
+    
+    .srs-btns { display: none; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+    .srs-btn { padding: 12px 4px; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; color: #fff; cursor: pointer; text-align: center; }
+    .srs-again { background: #dc2626; }
+    .srs-hard { background: #ea580c; }
+    .srs-good { background: #2563eb; }
+    .srs-easy { background: #16a34a; }
+
+    /* Backup Panel */
+    .backup-section { font-size: 13px; color: #94a3b8; line-height: 1.5; }
+    .backup-btn { background: #0284c7; color: #fff; width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: 600; margin-top: 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div class="app-wrap">
+  <header>
+    <h1>NEET PG Visual Deck</h1>
+    <span class="badge-count" id="deckDueCount">Due: 0</span>
+  </header>
+
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="setTab('study')">Study</button>
+    <button class="tab-btn" onclick="setTab('add')">+ Add Card</button>
+    <button class="tab-btn" onclick="setTab('backup')">Sync / Files</button>
+  </div>
+
+  <!-- 1. STUDY TAB -->
+  <div id="studyTab" class="card-panel active">
+    <div class="study-box">
+      <div>
+        <span class="study-tag" id="dispTag">General</span>
+        <div class="study-question" id="dispFront">Loading questions...</div>
+        
+        <div class="occlusion-container" id="studyImgWrap" style="display:none;">
+          <img id="studyImg" class="occlusion-img" />
+          <div id="masksLayer"></div>
+        </div>
+
+        <div class="answer-box" id="dispAnswerBox">
+          <div style="font-size:11px; font-weight:bold; color:#38bdf8; margin-bottom:4px;">HIGH-YIELD NOTES / ANSWER:</div>
+          <div id="dispBack"></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px;">
+        <button class="flip-btn" id="btnReveal" onclick="revealCard()">Show Answer</button>
+        <div class="srs-btns" id="srsControls">
+          <button class="srs-btn srs-again" onclick="rateCard(1)">Again<br><small>&lt;10m</small></button>
+          <button class="srs-btn srs-hard" onclick="rateCard(2)">Hard<br><small id="lblHard">1d</small></button>
+          <button class="srs-btn srs-good" onclick="rateCard(3)">Good<br><small id="lblGood">2d</small></button>
+          <button class="srs-btn srs-easy" onclick="rateCard(4)">Easy<br><small id="lblEasy">4d</small></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. ADD CARD (IMAGE OCCLUSION) TAB -->
+  <div id="addTab" class="card-panel">
+    <label>Subject / High-Yield Topic</label>
+    <input type="text" id="cardSubject" placeholder="e.g., Radiology - Chest X-Ray signs">
+
+    <label>Question / Prompt</label>
+    <input type="text" id="cardPrompt" placeholder="Identify the highlighted lesion / pathology">
+
+    <label>Choose Image (Histology / Anatomy / ECG)</label>
+    <input type="file" id="imageChooser" accept="image/*">
+
+    <div id="editorWrap" style="display:none; margin-top:8px;">
+      <span style="font-size: 11px; color:#38bdf8;">Tip: Drag on image to draw occlusion masks (patti)</span>
+      <div class="canvas-wrap">
+        <canvas id="editCanvas"></canvas>
+      </div>
+      <div class="btn-row">
+        <button class="action-btn btn-clear" onclick="clearLastMask()">Undo Mask</button>
+        <button class="action-btn btn-clear" onclick="clearAllMasks()">Clear All</button>
+      </div>
+    </div>
+
+    <label>Answer / Explanation (Back)</label>
+    <textarea id="cardExplanation" placeholder="Ghon focus, Ranke complex, Primary TB details..."></textarea>
+
+    <button class="action-btn btn-save" style="width:100%; margin-top:14px;" onclick="saveCardRecord()">Save Flashcard</button>
+  </div>
+
+  <!-- 3. BACKUP / EXPORT TAB -->
+  <div id="backupTab" class="card-panel">
+    <div class="backup-section">
+      <h3 style="color:#f1f5f9; margin-top:0;">iPhone Safe Storage & Backup</h3>
+      <p>Aapka sara flashcard data aur images aapke iPhone ke local database (IndexedDB) me stored rehte hain.</p>
+      <p>Data loss se bachne ke liye har hafte ek baar <b>Export Deck</b> dabayein aur file ko <b>Files App / iCloud Drive</b> me save kar lein.</p>
+      
+      <button class="backup-btn" onclick="exportBackup()">📥 Download Backup File (.json)</button>
+      
+      <div style="margin-top:20px; border-top:1px solid #334155; padding-top:14px;">
+        <label>Restore From Backup:</label>
+        <input type="file" id="importInput" accept=".json">
+        <button class="backup-btn" style="background:#10b981;" onclick="importBackup()">📤 Restore Deck</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ----------------- 1. DATABASE SETUP ----------------- */
+  let db;
+  const request = indexedDB.open("NeetPgAnkiDB", 1);
+  request.onupgradeneeded = (e) => {
+    db = e.target.result;
+    if(!db.objectStoreNames.contains("cards")) {
+      db.createObjectStore("cards", { keyPath: "id", autoIncrement: true });
+    }
+  };
+  request.onsuccess = (e) => {
+    db = e.target.result;
+    fetchDueDeck();
+  };
+
+  /* ----------------- 2. IMAGE OCCLUSION DRAWING ----------------- */
+  const canvas = document.getElementById('editCanvas');
+  const ctx = canvas.getContext('2d');
+  let loadedImg = null;
+  let masks = []; // [{x, y, w, h}] normalized 0..1
+  let isDrawing = false;
+  let startX = 0, startY = 0;
+
+  document.getElementById('imageChooser').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      loadedImg = new Image();
+      loadedImg.onload = function() {
+        document.getElementById('editorWrap').style.display = 'block';
+        resizeAndDrawCanvas();
+      };
+      loadedImg.src = evt.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function resizeAndDrawCanvas() {
+    if (!loadedImg) return;
+    const maxW = Math.min(window.innerWidth - 64, 480);
+    const scale = maxW / loadedImg.width;
+    canvas.width = maxW;
+    canvas.height = loadedImg.height * scale;
+    drawEditor();
+  }
+
+  function drawEditor() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (loadedImg) {
+      ctx.drawImage(loadedImg, 0, 0, canvas.width, canvas.height);
+    }
+    // Draw masks
+    ctx.fillStyle = "rgba(225, 29, 72, 0.9)";
+    ctx.strokeStyle = "#fda4af";
+    ctx.lineWidth = 2;
+    masks.forEach(m => {
+      const rx = m.x * canvas.width;
+      const ry = m.y * canvas.height;
+      const rw = m.w * canvas.width;
+      const rh = m.h * canvas.height;
+      ctx.fillRect(rx, ry, rw, rh);
+      ctx.strokeRect(rx, ry, rw, rh);
+    });
+  }
+
+  // Pointer events support iPhone touch + Desktop mouse
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) / canvas.width,
+      y: (clientY - rect.top) / canvas.height
+    };
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    isDrawing = true;
+    const pos = getPos(e);
+    startX = pos.x;
+    startY = pos.y;
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!isDrawing) return;
+    const pos = getPos(e);
+    drawEditor();
+    ctx.fillStyle = "rgba(225, 29, 72, 0.5)";
+    const x = Math.min(startX, pos.x) * canvas.width;
+    const y = Math.min(startY, pos.y) * canvas.height;
+    const w = Math.abs(pos.x - startX) * canvas.width;
+    const h = Math.abs(pos.y - startY) * canvas.height;
+    ctx.fillRect(x, y, w, h);
+  });
+
+  canvas.addEventListener('pointerup', (e) => {
+    if (!isDrawing) return;
+    isDrawing = false;
+    const pos = getPos(e);
+    const x = Math.min(startX, pos.x);
+    const y = Math.min(startY, pos.y);
+    const w = Math.abs(pos.x - startX);
+    const h = Math.abs(pos.y - startY);
+    if (w > 0.03 && h > 0.03) { // Ignore accidental taps
+      masks.push({ x, y, w, h });
+    }
+    drawEditor();
+  });
+
+  function clearLastMask() {
+    masks.pop();
+    drawEditor();
+  }
+
+  function clearAllMasks() {
+    masks = [];
+    drawEditor();
+  }
+
+  /* ----------------- 3. ANKI SM-2 SRS ALGORITHM ----------------- */
+  function calculateSM2(card, grade) {
+    // grade: 1: Again, 2: Hard, 3: Good, 4: Easy
+    let { repetitions = 0, interval = 0, easeFactor = 2.5 } = card;
+
+    if (grade >= 3) {
+      if (repetitions === 0) {
+        interval = 1; // 1 day
+      } else if (repetitions === 1) {
+        interval = 3; // 3 days
+      } else {
+        interval = Math.round(interval * easeFactor);
+      }
+      repetitions++;
+    } else if (grade === 2) { // Hard
+      interval = Math.max(1, Math.round(interval * 1.2));
+    } else { // Again
+      repetitions = 0;
+      interval = 0; // due immediately / today
+    }
+
+    // Ease factor adjustment formula
+    easeFactor = easeFactor + (0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02));
+    if (easeFactor < 1.3) easeFactor = 1.3;
+
+    const nextDueDate = new Date();
+    nextDueDate.setHours(0,0,0,0);
+    nextDueDate.setDate(nextDueDate.getDate() + interval);
+
+    return {
+      repetitions,
+      interval,
+      easeFactor,
+      nextDueDate: nextDueDate.getTime()
+    };
+  }
+
+  /* ----------------- 4. CARD MANAGEMENT ----------------- */
+  function saveCardRecord() {
+    const subject = document.getElementById('cardSubject').value.trim() || 'General';
+    const prompt = document.getElementById('cardPrompt').value.trim();
+    const explanation = document.getElementById('cardExplanation').value.trim();
+
+    if (!prompt && !loadedImg) {
+      alert("Please provide at least a question or an image!");
+      return;
+    }
+
+    const cardData = {
+      subject,
+      prompt,
+      explanation,
+      image: loadedImg ? loadedImg.src : null,
+      masks: [...masks],
+      repetitions: 0,
+      interval: 0,
+      easeFactor: 2.5,
+      nextDueDate: Date.now() // Due right now
+    };
+
+    const tx = db.transaction("cards", "readwrite");
+    tx.objectStore("cards").add(cardData);
+    tx.oncomplete = () => {
+      alert("Card added to your SRS deck!");
+      // Reset form
+      document.getElementById('cardSubject').value = '';
+      document.getElementById('cardPrompt').value = '';
+      document.getElementById('cardExplanation').value = '';
+      document.getElementById('imageChooser').value = '';
+      document.getElementById('editorWrap').style.display = 'none';
+      loadedImg = null;
+      masks = [];
+      setTab('study');
+    };
+  }
+
+  /* ----------------- 5. STUDY LOGIC ----------------- */
+  let dueQueue = [];
+  let currentCard = null;
+
+  function fetchDueDeck() {
+    const tx = db.transaction("cards", "readonly");
+    const store = tx.objectStore("cards");
+    const req = store.getAll();
+    req.onsuccess = () => {
+      const allCards = req.result;
+      const now = Date.now();
+      // Filter due cards
+      dueQueue = allCards.filter(c => !c.nextDueDate || c.nextDueDate <= now);
+      document.getElementById('deckDueCount').innerText = `Due: ${dueQueue.length}`;
+      loadNextCard();
+    };
+  }
+
+  function loadNextCard() {
+    if (dueQueue.length === 0) {
+      document.getElementById('dispTag').innerText = "All Caught Up!";
+      document.getElementById('dispFront').innerText = "🎉 Shaandar! Aaj ke saare cards complete ho gaye hain.";
+      document.getElementById('studyImgWrap').style.display = 'none';
+      document.getElementById('dispAnswerBox').style.display = 'none';
+      document.getElementById('btnReveal').style.display = 'none';
+      document.getElementById('srsControls').style.display = 'none';
+      return;
+    }
+
+    currentCard = dueQueue[0];
+    document.getElementById('dispTag').innerText = currentCard.subject;
+    document.getElementById('dispFront').innerText = currentCard.prompt || 'Identify the obscured section:';
+    document.getElementById('dispBack').innerText = currentCard.explanation || 'No additional note.';
+    document.getElementById('dispAnswerBox').style.display = 'none';
+    document.getElementById('btnReveal').style.display = 'block';
+    document.getElementById('srsControls').style.display = 'none';
+
+    // Render image & occlusion masks
+    const imgWrap = document.getElementById('studyImgWrap');
+    const masksLayer = document.getElementById('masksLayer');
+    masksLayer.innerHTML = '';
+
+    if (currentCard.image) {
+      imgWrap.style.display = 'inline-block';
+      const img = document.getElementById('studyImg');
+      img.src = currentCard.image;
+
+      if (currentCard.masks && currentCard.masks.length > 0) {
+        currentCard.masks.forEach(m => {
+          const div = document.createElement('div');
+          div.className = 'occlusion-mask';
+          div.style.left = (m.x * 100) + '%';
+          div.style.top = (m.y * 100) + '%';
+          div.style.width = (m.w * 100) + '%';
+          div.style.height = (m.h * 100) + '%';
+          // Tap mask to peek / reveal individual label
+          div.onclick = () => div.classList.toggle('revealed');
+          masksLayer.appendChild(div);
+        });
+      }
+    } else {
+      imgWrap.style.display = 'none';
+    }
+  }
+
+  function revealCard() {
+    document.getElementById('dispAnswerBox').style.display = 'block';
+    document.getElementById('btnReveal').style.display = 'none';
+    document.getElementById('srsControls').style.display = 'grid';
+
+    // Uncover all masks
+    document.querySelectorAll('.occlusion-mask').forEach(m => m.classList.add('revealed'));
+  }
+
+  function rateCard(grade) {
+    if (!currentCard) return;
+    const updatedSRS = calculateSM2(currentCard, grade);
+    Object.assign(currentCard, updatedSRS);
+
+    const tx = db.transaction("cards", "readwrite");
+    tx.objectStore("cards").put(currentCard);
+    tx.oncomplete = () => {
+      if (grade === 1) {
+        // Move to end of current queue
+        const c = dueQueue.shift();
+        dueQueue.push(c);
+      } else {
+        dueQueue.shift();
+      }
+      document.getElementById('deckDueCount').innerText = `Due: ${dueQueue.length}`;
+      loadNextCard();
+    };
+  }
+
+  /* ----------------- 6. BACKUP & RESTORE ----------------- */
+  function exportBackup() {
+    const tx = db.transaction("cards", "readonly");
+    tx.objectStore("cards").getAll().onsuccess = (e) => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(e.target.result));
+      const dlAnchor = document.createElement('a');
+      dlAnchor.setAttribute("href", dataStr);
+      dlAnchor.setAttribute("download", `NEET_PG_Deck_Backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(dlAnchor);
+      dlAnchor.click();
+      dlAnchor.remove();
+    };
+  }
+
+  function importBackup() {
+    const file = document.getElementById('importInput').files[0];
+    if (!file) {
+      alert("Pehle .json backup file select karein!");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const imported = JSON.parse(e.target.result);
+        if (!Array.isArray(imported)) throw new Error("Invalid format");
+        
+        const tx = db.transaction("cards", "readwrite");
+        const store = tx.objectStore("cards");
+        imported.forEach(card => {
+          delete card.id; // allow fresh auto-increment
+          store.add(card);
+        });
+        tx.oncomplete = () => {
+          alert(`Successfully imported ${imported.length} cards!`);
+          setTab('study');
+        };
+      } catch(err) {
+        alert("Backup file corrupt ya invalid hai!");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ----------------- 7. UI TABS ----------------- */
+  function setTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.card-panel').forEach(p => p.classList.remove('active'));
+    if (tab === 'study') {
+      document.querySelectorAll('.tab-btn')[0].classList.add('active');
+      document.getElementById('studyTab').classList.add('active');
+      fetchDueDeck();
+    } else if (tab === 'add') {
+      document.querySelectorAll('.tab-btn')[1].classList.add('active');
+      document.getElementById('addTab').classList.add('active');
+    } else {
+      document.querySelectorAll('.tab-btn')[2].classList.add('active');
+      document.getElementById('backupTab').classList.add('active');
+    }
+  }
+</script>
+</body>
+</html>
